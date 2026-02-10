@@ -42,12 +42,12 @@ interface ChatDialogProps {
 }
 
 export function ChatDialog({ open, onOpenChange, seller, product }: ChatDialogProps) {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: 1,
       senderId: seller.id,
       text: `¡Hola! Gracias por tu interés en "${product.title}". ¿En qué puedo ayudarte?`,
-      timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
+      timestamp: new Date(),
       isRead: true,
     },
   ])

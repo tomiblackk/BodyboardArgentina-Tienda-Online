@@ -324,7 +324,7 @@ export default function Home() {
             </StaggerContainer>
             <AnimatedSection animation="fadeIn" delay={800}>
               <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-                <p>© {new Date().getFullYear()} Bodyboard Argentina. Todos los derechos reservados.</p>
+                <p>© 2025 Bodyboard Argentina. Todos los derechos reservados.</p>
               </div>
             </AnimatedSection>
           </div>

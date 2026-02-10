@@ -31,6 +31,7 @@ export function CheckoutDialog({ open, onOpenChange, total, items }: CheckoutDia
   const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [paymentMethod, setPaymentMethod] = useState("")
+  const [orderNumber] = useState(() => Math.floor(Math.random() * 10000))
   const [isProcessing, setIsProcessing] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
@@ -355,7 +356,7 @@ export function CheckoutDialog({ open, onOpenChange, total, items }: CheckoutDia
         </p>
       </div>
       <div className="bg-gray-50 p-4 rounded-lg">
-        <p className="font-semibold">Número de pedido: #BB-{Math.floor(Math.random() * 10000)}</p>
+        <p className="font-semibold">Número de pedido: #BB-{orderNumber}</p>
         <p className="text-sm text-muted-foreground mt-1">Tiempo estimado de entrega: 3-5 días hábiles</p>
       </div>
       <Button onClick={() => onOpenChange(false)} className="w-full bg-cyan-600 hover:bg-cyan-700">
