@@ -20,12 +20,38 @@ export interface MarketplaceProduct {
     memberSince: string
     responseRate: string
     responseTime: string
+    phone?: string
+    email?: string
+    city?: string
   }
   postedAt: string
   createdAt: string
 }
 
+interface UserProfile {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  city: string
+  createdAt: string
+}
+
 const PRODUCTS_BLOB_PATH = "marketplace/products.json"
+const PROFILES_BLOB_PATH = "profiles/profiles.json"
+
+async function getProfiles(): Promise<UserProfile[]> {
+  try {
+    const { blobs } = await list({ prefix: PROFILES_BLOB_PATH })
+    if (blobs.length === 0) return []
+    const response = await fetch(blobs[0].url, { cache: "no-store" })
+    if (!response.ok) return []
+    return await response.json()
+  } catch {
+    return []
+  }
+}
 
 async function getProducts(): Promise<MarketplaceProduct[]> {
   try {
@@ -67,7 +93,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const { title, description, price, category, condition, location, images } = body
+    const { title, description, price, category, condition, location, images, sellerProfileId } = body
 
     if (!title || !description || !price || !category || !condition || !location) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -98,6 +124,41 @@ export async function POST(request: NextRequest) {
       "otra": "Otra ubicacion",
     }
 
+    // Look up seller profile if provided
+    let sellerInfo = {
+      id: 200,
+      name: "Usuario",
+      avatar: "",
+      rating: 5.0,
+      verified: false,
+      memberSince: new Date().getFullYear().toString(),
+      responseRate: "N/A",
+      responseTime: "N/A",
+      phone: "",
+      email: "",
+      city: "",
+    }
+
+    if (sellerProfileId) {
+      const profiles = await getProfiles()
+      const sellerProfile = profiles.find((p) => p.id === sellerProfileId)
+      if (sellerProfile) {
+        sellerInfo = {
+          id: Number(sellerProfile.id.replace("profile-", "")) || 200,
+          name: `${sellerProfile.firstName} ${sellerProfile.lastName}`,
+          avatar: "",
+          rating: 5.0,
+          verified: true,
+          memberSince: new Date(sellerProfile.createdAt).getFullYear().toString(),
+          responseRate: "N/A",
+          responseTime: "N/A",
+          phone: sellerProfile.phone,
+          email: sellerProfile.email,
+          city: sellerProfile.city,
+        }
+      }
+    }
+
     const newProduct: MarketplaceProduct = {
       id: `user-${Date.now()}`,
       title,
@@ -107,16 +168,7 @@ export async function POST(request: NextRequest) {
       condition: conditionLabels[condition] || condition,
       location: locationLabels[location] || location,
       images: images || [],
-      seller: {
-        id: 200,
-        name: "Usuario",
-        avatar: "",
-        rating: 5.0,
-        verified: false,
-        memberSince: new Date().getFullYear().toString(),
-        responseRate: "N/A",
-        responseTime: "N/A",
-      },
+      seller: sellerInfo,
       postedAt: "Recien publicado",
       createdAt: new Date().toISOString(),
     }

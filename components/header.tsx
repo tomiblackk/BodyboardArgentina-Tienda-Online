@@ -4,12 +4,13 @@ import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import Link from "next/link"
 import Image from "next/image"
-import { ShoppingCart, Instagram, Menu, ChevronDown, User, LogIn, UserPlus } from "lucide-react"
+import { ShoppingCart, Instagram, Menu, ChevronDown, User, LogIn, UserPlus, CheckCircle2, LogOut } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { useCart } from "@/contexts/cart-context"
+import { useProfile } from "@/contexts/profile-context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
 
 export function Header() {
   const { state } = useCart()
+  const { profile, logout } = useProfile()
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -86,12 +88,31 @@ export function Header() {
                 <div className="border-t pt-4 space-y-2">
                   <div className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">Cuenta</div>
                   <div className="pl-4 space-y-2">
-                    <Link href="/iniciar-sesion" className="block hover:text-primary transition-colors">
-                      Iniciar Sesión
-                    </Link>
-                    <Link href="/crear-cuenta" className="block hover:text-primary transition-colors">
-                      Crear Cuenta
-                    </Link>
+                    {profile ? (
+                      <>
+                        <div className="text-sm text-muted-foreground">
+                          {profile.firstName} {profile.lastName}
+                        </div>
+                        <Link href="/perfil" className="block hover:text-primary transition-colors">
+                          Mi Perfil
+                        </Link>
+                        <Link href="/marketplace/publicar" className="block hover:text-primary transition-colors">
+                          Publicar producto
+                        </Link>
+                        <button onClick={logout} className="block hover:text-primary transition-colors text-left">
+                          Cerrar sesion
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link href="/perfil" className="block hover:text-primary transition-colors">
+                          Iniciar Sesion
+                        </Link>
+                        <Link href="/perfil" className="block hover:text-primary transition-colors">
+                          Crear Cuenta
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </div>
               </nav>
@@ -225,30 +246,59 @@ export function Header() {
           {/* User Account Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="bg-transparent">
-                <User className="h-5 w-5" />
+              <Button variant="outline" size="icon" className={`bg-transparent ${profile ? "border-cyan-500 text-cyan-600" : ""}`}>
+                {profile ? <CheckCircle2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
                 <span className="sr-only">Cuenta de usuario</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <div className="px-2 py-1.5 text-sm font-medium">Mi Cuenta</div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/iniciar-sesion" className="w-full flex items-center">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Iniciar Sesión
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/crear-cuenta" className="w-full flex items-center">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Crear Cuenta
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                Inicia sesión para acceder a tu perfil, historial de pedidos y más.
-              </div>
+              {profile ? (
+                <>
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{profile.firstName} {profile.lastName}</p>
+                    <p className="text-xs text-muted-foreground">{profile.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/perfil" className="w-full flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      Mi Perfil
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/marketplace/publicar" className="w-full flex items-center">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Publicar producto
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="w-full flex items-center cursor-pointer">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Cerrar sesion
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <div className="px-2 py-1.5 text-sm font-medium">Mi Cuenta</div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/perfil" className="w-full flex items-center">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Iniciar Sesion
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/perfil" className="w-full flex items-center">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Crear Cuenta
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Crea tu perfil para publicar productos en el Marketplace.
+                  </div>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

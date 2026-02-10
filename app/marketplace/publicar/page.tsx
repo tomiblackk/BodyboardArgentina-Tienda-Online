@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Info, Upload, X, Loader2 } from "lucide-react"
+import { Info, Upload, X, Loader2, ShieldAlert } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,10 +17,13 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { BackButton } from "@/components/back-button"
+import { useProfile } from "@/contexts/profile-context"
+import Link from "next/link"
 
 export default function PublishProductPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { profile } = useProfile()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
@@ -133,6 +136,7 @@ export default function PublishProductPage() {
         body: JSON.stringify({
           ...formData,
           images,
+          sellerProfileId: profile.id,
         }),
       })
 
@@ -154,6 +158,37 @@ export default function PublishProductPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (!profile) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center gap-4 mb-6">
+          <BackButton href="/marketplace" label="Volver al Marketplace" />
+        </div>
+        <div className="max-w-lg mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 mb-2">
+                <ShieldAlert className="h-7 w-7" />
+              </div>
+              <CardTitle>Perfil requerido</CardTitle>
+              <CardDescription>
+                Para publicar un producto en el Marketplace necesitas crear un perfil primero. Esto nos ayuda a verificar que sos una persona real.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Button asChild className="w-full bg-cyan-600 hover:bg-cyan-700 text-white">
+                <Link href="/perfil">Crear mi perfil</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/marketplace">Volver al Marketplace</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (

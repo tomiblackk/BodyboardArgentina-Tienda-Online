@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { CartProvider } from "@/contexts/cart-context"
+import { ProfileProvider } from "@/contexts/profile-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,10 +25,12 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <CartProvider>
-            {children}
-            <Toaster />
-          </CartProvider>
+          <ProfileProvider>
+            <CartProvider>
+              {children}
+              <Toaster />
+            </CartProvider>
+          </ProfileProvider>
         </ThemeProvider>
       </body>
     </html>
