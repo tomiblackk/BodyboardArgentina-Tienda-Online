@@ -23,7 +23,7 @@ import Link from "next/link"
 export default function PublishProductPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { profile } = useProfile()
+  const { profile, isLoading: profileLoading } = useProfile()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)

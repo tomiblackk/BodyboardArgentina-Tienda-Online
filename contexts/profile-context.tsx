@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
 
 export interface UserProfile {
   id: string
@@ -21,11 +21,51 @@ interface ProfileContextValue {
   logout: () => void
 }
 
+const COOKIE_NAME = "bb_profile_email"
+
+function setSessionCookie(email: string) {
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(email)};path=/;max-age=${60 * 60 * 24 * 30};SameSite=Lax`
+}
+
+function getSessionCookie(): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function clearSessionCookie() {
+  document.cookie = `${COOKIE_NAME}=;path=/;max-age=0`
+}
+
 const ProfileContext = createContext<ProfileContextValue | undefined>(undefined)
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // On mount, check for an existing session cookie and restore the profile
+  useEffect(() => {
+    const savedEmail = getSessionCookie()
+    if (!savedEmail) {
+      setIsLoading(false)
+      return
+    }
+
+    fetch(`/api/profile?email=${encodeURIComponent(savedEmail)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.profile) {
+          setProfile(data.profile)
+        } else {
+          clearSessionCookie()
+        }
+      })
+      .catch(() => {
+        clearSessionCookie()
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
+  }, [])
 
   const login = useCallback(async (email: string): Promise<UserProfile | null> => {
     setIsLoading(true)
@@ -34,6 +74,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json()
       if (data.profile) {
         setProfile(data.profile)
+        setSessionCookie(data.profile.email)
         return data.profile
       }
       return null
@@ -61,6 +102,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
         const { profile: newProfile } = await res.json()
         setProfile(newProfile)
+        setSessionCookie(newProfile.email)
         return newProfile
       } finally {
         setIsLoading(false)
@@ -71,6 +113,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setProfile(null)
+    clearSessionCookie()
   }, [])
 
   return (
