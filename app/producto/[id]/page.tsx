@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
@@ -176,8 +176,8 @@ const products = [
   },
 ]
 
-export default function ProductPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const product = products.find((p) => p.id === id)
 
   // Si el producto no existe, mostrar 404

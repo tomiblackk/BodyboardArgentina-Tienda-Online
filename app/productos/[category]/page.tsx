@@ -1,5 +1,6 @@
 "use client"
 
+import { use } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
@@ -237,8 +238,8 @@ const categoryData = {
   },
 }
 
-export default function CategoryPage({ params }: { params: { category: string } }) {
-  const { category } = params
+export default function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  const { category } = use(params)
   const { addItem } = useCart()
   const { toast } = useToast()
 

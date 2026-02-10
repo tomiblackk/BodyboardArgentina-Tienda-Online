@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -223,9 +223,9 @@ const similarProducts = [
   },
 ]
 
-export default function MarketplaceItemPage({ params }: { params: { id: string } }) {
+export default function MarketplaceItemPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const id = params.id
+  const { id } = use(params)
 
   const { data: userProductsData } = useSWR("/api/marketplace/products", fetcher)
 
