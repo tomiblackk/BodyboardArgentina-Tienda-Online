@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import useSWR from "swr"
 import { ChevronLeft, ChevronRight, Flag, MessageCircle, Share, Shield, Star, Tag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VerificationBadge } from "@/components/verification-badge"
 import { ChatDialog } from "@/components/chat-dialog"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 // Datos de ejemplo para el marketplace (mismo que en la página principal)
 const marketplaceItems = [
@@ -222,8 +225,32 @@ const similarProducts = [
 
 export default function MarketplaceItemPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const id = Number.parseInt(params.id)
-  const item = marketplaceItems.find((item) => item.id === id)
+  const id = params.id
+
+  const { data: userProductsData } = useSWR("/api/marketplace/products", fetcher)
+
+  // Try to find in hardcoded items first, then user-published products
+  const hardcodedItem = marketplaceItems.find((item) => item.id === Number(id))
+  const userItem = (userProductsData?.products || []).find((p: any) => p.id === id)
+  const item = hardcodedItem || (userItem ? {
+    ...userItem,
+    price: Number(userItem.price),
+    details: {
+      categoria: userItem.category,
+      estado: userItem.condition,
+      ubicacion: userItem.location,
+    },
+    seller: userItem.seller || {
+      id: 200,
+      name: "Usuario",
+      avatar: "",
+      rating: 5.0,
+      verified: false,
+      memberSince: "2025",
+      responseRate: "N/A",
+      responseTime: "N/A",
+    },
+  } : null)
 
   const [selectedImage, setSelectedImage] = useState(0)
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -275,6 +302,7 @@ export default function MarketplaceItemPage({ params }: { params: { id: string }
                   alt={item.title}
                   fill
                   className="object-contain"
+                  unoptimized
                 />
                 {item.images.length > 1 && (
                   <>
@@ -312,6 +340,7 @@ export default function MarketplaceItemPage({ params }: { params: { id: string }
                         alt={`${item.title} - Imagen ${index + 1}`}
                         fill
                         className="object-cover"
+                        unoptimized
                       />
                     </button>
                   ))}
@@ -391,7 +420,9 @@ export default function MarketplaceItemPage({ params }: { params: { id: string }
                   <Separator />
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={item.seller.avatar || "/placeholder.svg"} alt={item.seller.name} />
+                      {item.seller.avatar && (
+                        <AvatarImage src={item.seller.avatar} alt={item.seller.name} />
+                      )}
                       <AvatarFallback>{item.seller.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>

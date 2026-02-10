@@ -2,10 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Info, Upload, X } from "lucide-react"
+import { Info, Upload, X, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,8 +21,10 @@ import { BackButton } from "@/components/back-button"
 export default function PublishProductPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -41,31 +43,117 @@ export default function PublishProductPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleImageUpload = () => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const file = files[0]
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Archivo no valido",
+        description: "Solo se permiten archivos de imagen.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Archivo demasiado grande",
+        description: "El archivo no puede superar los 5MB.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setUploading(true)
-    // Simulate image upload
-    setTimeout(() => {
-      const newImage = `/images/marketplace/upload-${Math.floor(Math.random() * 5) + 1}.jpg`
-      setImages((prev) => [...prev, newImage])
-      setUploading(false)
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append("file", file)
+
+      const res = await fetch("/api/marketplace/upload", {
+        method: "POST",
+        body: formDataUpload,
+      })
+
+      if (!res.ok) {
+        throw new Error("Upload failed")
+      }
+
+      const data = await res.json()
+      setImages((prev) => [...prev, data.url])
       toast({
         title: "Imagen subida",
         description: "La imagen se ha subido correctamente.",
       })
-    }, 1500)
+    } catch {
+      toast({
+        title: "Error al subir imagen",
+        description: "Hubo un problema al subir la imagen. Intenta de nuevo.",
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
   }
 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast({
-      title: "Producto publicado",
-      description: "Tu producto ha sido publicado correctamente en el Marketplace.",
-    })
-    router.push("/marketplace")
+
+    if (images.length === 0) {
+      toast({
+        title: "Imagenes requeridas",
+        description: "Subi al menos una foto del producto.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.category || !formData.condition || !formData.location) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor completa todos los campos del formulario.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/marketplace/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          images,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Failed to publish")
+      }
+
+      toast({
+        title: "Producto publicado",
+        description: "Tu producto ha sido publicado correctamente en el Marketplace.",
+      })
+      router.push("/marketplace")
+    } catch {
+      toast({
+        title: "Error al publicar",
+        description: "Hubo un problema al publicar tu producto. Intenta de nuevo.",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -91,20 +179,30 @@ export default function PublishProductPage() {
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Sube fotos claras y de buena calidad de tu producto.</p>
-                        <p>Puedes subir hasta 5 fotos.</p>
+                        <p>Subi fotos claras y de buena calidad de tu producto.</p>
+                        <p>Podes subir hasta 5 fotos.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+
                 <div className="grid grid-cols-5 gap-4">
                   {images.map((image, index) => (
                     <div key={index} className="relative aspect-square rounded-md overflow-hidden border">
                       <Image
-                        src={image || "/placeholder.svg"}
+                        src={image}
                         alt={`Imagen ${index + 1}`}
                         fill
                         className="object-cover"
+                        unoptimized
                       />
                       <Button
                         type="button"
@@ -122,11 +220,17 @@ export default function PublishProductPage() {
                       type="button"
                       variant="outline"
                       className="aspect-square flex flex-col items-center justify-center border-dashed bg-transparent"
-                      onClick={handleImageUpload}
+                      onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
                     >
-                      <Upload className="h-6 w-6 mb-1" />
-                      <span className="text-xs">{uploading ? "Subiendo..." : "Subir"}</span>
+                      {uploading ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 mb-1" />
+                          <span className="text-xs">Subir</span>
+                        </>
+                      )}
                     </Button>
                   )}
                   {Array.from({ length: Math.max(0, 4 - images.length) }).map((_, index) => (
@@ -141,7 +245,7 @@ export default function PublishProductPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
+                <Label htmlFor="title">Titulo</Label>
                 <Input
                   id="title"
                   name="title"
@@ -153,7 +257,7 @@ export default function PublishProductPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
+                <Label htmlFor="description">Descripcion</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -180,14 +284,14 @@ export default function PublishProductPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoría</Label>
+                  <Label htmlFor="category">Categoria</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(value) => handleSelectChange("category", value)}
                     required
                   >
                     <SelectTrigger id="category">
-                      <SelectValue placeholder="Selecciona una categoría" />
+                      <SelectValue placeholder="Selecciona una categoria" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tablas">Tablas</SelectItem>
@@ -220,22 +324,22 @@ export default function PublishProductPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="location">Ubicación</Label>
+                  <Label htmlFor="location">Ubicacion</Label>
                   <Select
                     value={formData.location}
                     onValueChange={(value) => handleSelectChange("location", value)}
                     required
                   >
                     <SelectTrigger id="location">
-                      <SelectValue placeholder="Selecciona tu ubicación" />
+                      <SelectValue placeholder="Selecciona tu ubicacion" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="mar-del-plata">Mar del Plata, Buenos Aires</SelectItem>
                       <SelectItem value="pinamar">Pinamar, Buenos Aires</SelectItem>
                       <SelectItem value="villa-gesell">Villa Gesell, Buenos Aires</SelectItem>
                       <SelectItem value="miramar">Miramar, Buenos Aires</SelectItem>
-                      <SelectItem value="mar-de-ajo">Mar de Ajó, Buenos Aires</SelectItem>
-                      <SelectItem value="otra">Otra ubicación</SelectItem>
+                      <SelectItem value="mar-de-ajo">Mar de Ajo, Buenos Aires</SelectItem>
+                      <SelectItem value="otra">Otra ubicacion</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -244,12 +348,12 @@ export default function PublishProductPage() {
               <Separator />
 
               <div className="bg-muted rounded-lg p-4">
-                <h3 className="font-medium mb-2">Consejos para vender rápido</h3>
+                <h3 className="font-medium mb-2">Consejos para vender rapido</h3>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Usa fotos claras y de buena calidad</li>
-                  <li>• Describe el producto con detalle y honestidad</li>
-                  <li>• Establece un precio justo y competitivo</li>
-                  <li>• Responde rápido a los mensajes de los compradores</li>
+                  <li>Usa fotos claras y de buena calidad</li>
+                  <li>Describe el producto con detalle y honestidad</li>
+                  <li>Establece un precio justo y competitivo</li>
+                  <li>Responde rapido a los mensajes de los compradores</li>
                 </ul>
               </div>
 
@@ -257,8 +361,15 @@ export default function PublishProductPage() {
                 <Button type="button" variant="outline" onClick={() => router.push("/marketplace")}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700">
-                  Publicar producto
+                <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Publicando...
+                    </>
+                  ) : (
+                    "Publicar producto"
+                  )}
                 </Button>
               </div>
             </form>

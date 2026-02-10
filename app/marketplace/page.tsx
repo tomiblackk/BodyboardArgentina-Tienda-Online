@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useMemo, useCallback } from "react"
+import useSWR from "swr"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -24,6 +25,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MarketplaceFilters, type FilterState } from "@/components/marketplace-filters"
 import { VerificationBadge } from "@/components/verification-badge"
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 // Datos de ejemplo para el marketplace
 const marketplaceItems = [
@@ -160,6 +163,9 @@ const marketplaceItems = [
 
 export default function MarketplacePage() {
   const router = useRouter()
+  const { data: userProductsData } = useSWR("/api/marketplace/products", fetcher, {
+    revalidateOnFocus: true,
+  })
   const [view, setView] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("recent")
@@ -177,9 +183,27 @@ export default function MarketplacePage() {
     setFilters(newFilters)
   }, [])
 
+  // Merge hardcoded items with user-published products
+  const allItems = useMemo(() => {
+    const userProducts = (userProductsData?.products || []).map((p: any) => ({
+      ...p,
+      id: p.id,
+      price: Number(p.price),
+      seller: p.seller || {
+        id: 200,
+        name: "Usuario",
+        avatar: "",
+        rating: 5.0,
+        verified: false,
+        memberSince: "2025",
+      },
+    }))
+    return [...userProducts, ...marketplaceItems]
+  }, [userProductsData])
+
   // Aplicar filtros y búsqueda
   const filteredItems = useMemo(() => {
-    const filtered = marketplaceItems.filter((item) => {
+    const filtered = allItems.filter((item: any) => {
       // Filtro de búsqueda
       const matchesSearch =
         searchQuery === "" ||
@@ -386,7 +410,7 @@ export default function MarketplacePage() {
               </div>
             ) : view === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredItems.map((item) => (
+                {filteredItems.map((item: any) => (
                   <Link key={item.id} href={`/marketplace/${item.id}`}>
                     <Card className="h-full overflow-hidden hover:shadow-md transition-shadow">
                       <div className="aspect-square relative overflow-hidden">
@@ -395,6 +419,7 @@ export default function MarketplacePage() {
                           alt={item.title}
                           fill
                           className="object-cover"
+                          unoptimized
                         />
                       </div>
                       <CardContent className="p-4">
@@ -425,7 +450,7 @@ export default function MarketplacePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredItems.map((item) => (
+                {filteredItems.map((item: any) => (
                   <Link key={item.id} href={`/marketplace/${item.id}`}>
                     <Card className="overflow-hidden hover:shadow-md transition-shadow">
                       <div className="flex">
@@ -435,6 +460,7 @@ export default function MarketplacePage() {
                             alt={item.title}
                             fill
                             className="object-cover"
+                            unoptimized
                           />
                         </div>
                         <div className="flex-1 p-4">
